@@ -51,14 +51,19 @@ app.get("/listings/:id",wrapAsync(async(req,res)=>{
     const listing = await Listing.findById(id);
     res.render("listing/show.ejs",{listing});
 }))
+  
+let validatelisting = (req,res,next)=>{
+    let {error} = listingSchema.validate(req.body);
+    if(error){
+        let errmsg = error.details.map((el)=>el.message).join(",");
+        throw new ExpressError(400,errmsg);
+    }else{
+        next();
+    }
+}
 
 //Create Route
-app.post("/listings",wrapAsync(async(req,res)=>{
-    let result = listingSchema.validate(req.body);
-    console.log(result);
-    if(result.error){
-        throw new ExpressError(400,result.error);
-    }
+app.post("/listings",validatelisting,wrapAsync(async(req,res)=>{
     let newlisting = new Listing(req.body.listing);
     await newlisting.save();
     res.redirect("/listings");
@@ -73,10 +78,7 @@ app.get("/listings/:id/edit",wrapAsync(async(req,res)=>{
 }))
 
 //Update Route
-app.put("/listings/:id",wrapAsync(async(req,res)=>{
-    if(!req.body.listing){
-        throw new ExpressError(400,"Send a valid listing");
-    }
+app.put("/listings/:id",validatelisting,wrapAsync(async(req,res)=>{
     let {id} = req.params;
     await Listing.findByIdAndUpdate(id,{...req.body.listing});
     res.redirect(`/listings/${id}`);
